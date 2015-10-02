@@ -8,6 +8,8 @@
  * 	<source data-res="480" src="..." />
  * 	<source data-res="240" src="..." />
  * </video>
+ *
+ * FIXME with hacks by User:TheDJ to make this video-js 5.0 compatible
  */
 
 (function( _V_ ) {
@@ -35,13 +37,13 @@
 	/***********************************************************************************
 	 * Setup our resolution menu items
 	 ***********************************************************************************/
-	_V_.ResolutionMenuItem = _V_.MenuItem.extend({
-		
+	_V_.ResolutionMenuItem = _V_.extends( _V_.getComponent( 'MenuItem' ), {
+
 		// Call variable to prevent the resolution change from being called twice
 		call_count : 0,
 		
 		/** @constructor */
-		init : function( player, options ){
+		constructor : function( player, options ){
 			
 			var touchstart = false;
 			
@@ -50,7 +52,7 @@
 			options.selected = ( options.res.toString() === player.getCurrentRes().toString() );
 			
 			// Call the parent constructor
-			_V_.MenuItem.call( this, player, options );
+			_V_.getComponent( 'MenuItem' ).call( this, player, options );
 			
 			// Store the resolution as a property
 			this.resolution = options.res;
@@ -92,12 +94,12 @@
 	/***********************************************************************************
 	 * Setup our resolution menu title item
 	 ***********************************************************************************/
-	_V_.ResolutionTitleMenuItem = _V_.MenuItem.extend({
-		
-		init : function( player, options ) {
+	_V_.ResolutionTitleMenuItem = _V_.extends( _V_.getComponent( 'MenuItem' ), {
+
+		constructor : function( player, options ) {
 			
 			// Call the parent constructor
-			_V_.MenuItem.call( this, player, options );
+			_V_.getComponent( 'MenuItem' ).call( this, player, options );
 			
 			// No click handler for the menu title
 			this.off( 'click' );
@@ -107,24 +109,26 @@
 	/***********************************************************************************
 	 * Define our resolution selector button
 	 ***********************************************************************************/
-	_V_.ResolutionSelector = _V_.MenuButton.extend({
-		
+	_V_.ResolutionSelector = _V_.extends( _V_.getComponent( 'MenuButton' ), {
+
 		/** @constructor */
-		init : function( player, options ) {
+		constructor : function( player, options ) {
 			
 			// Add our list of available resolutions to the player object
 			player.availableRes = options.available_res;
 			
 			// Call the parent constructor
-			_V_.MenuButton.call( this, player, options );
-			
+			_V_.getComponent( 'MenuButton' ).call( this, player, options );
+
 			// Set the button text based on the option provided
-			this.el().firstChild.firstChild.innerHTML = options.buttonText;
+			this.el().firstChild.innerHTML = options.buttonText;
 		}
 	});
 	
 	// Set class for resolution selector button
-	_V_.ResolutionSelector.prototype.className = 'vjs-res-button';
+	_V_.ResolutionSelector.prototype.buildCSSClass = function buildCSSClass() {
+		return 'vjs-res-button ' + _V_.getComponent( 'MenuButton' ).prototype.buildCSSClass.call( this );
+	};
 	
 	// Create a menu item for each available resolution
 	_V_.ResolutionSelector.prototype.createItems = function() {
@@ -136,8 +140,8 @@
 		// Add the menu title item
 		items.push( new _V_.ResolutionTitleMenuItem( player, {
 			
-			el : _V_.Component.prototype.createEl( 'li', {
-				
+			el : _V_.getComponent( 'Component' ).prototype.createEl( 'li', {
+
 				className	: 'vjs-menu-title vjs-res-menu-title',
 				innerHTML	: player.localize( 'Quality' )
 			})
@@ -182,14 +186,14 @@
 		 * Setup variables, parse settings
 		 *******************************************************************/
 		var player = this,
-			sources	= player.options().sources,
+			sources	= this.options_.sources,
 			i = sources.length,
 			j,
 			found_type,
 			
 			// Override default options with those provided
-			settings = _V_.util.mergeOptions({
-				
+			settings = _V_.mergeOptions({
+
 				default_res	: '',		// (string)	The resolution that should be selected by default ( '480' or  '480,1080,240' )
 				force_types	: false		// (array)	List of media types. If passed, we need to have source for each type in each resolution or that resolution will not be an option
 				
@@ -218,7 +222,7 @@
 				available_res.length++;
 			}
 			
-			available_res[current_res].unshift( sources[i] );
+			available_res[current_res].push( sources[i] );
 		}
 		
 		// Check for forced types
@@ -301,8 +305,8 @@
 			} else {
 				
 				try {
-					
-					return res = player.options().sources[0]['data-res'];
+
+					return res = sources[0]['data-res'];
 					
 				} catch(e) {
 					
@@ -343,9 +347,9 @@
 			player.currentRes = target_resolution;
 			
 			// Make sure the button has been added to the control bar
-			if ( player.controlBar.resolutionSelector ) {
+			if ( player.getChild( 'controlBar' ).getChild( 'resolutionSelector' )  ) {
 				
-				button_nodes = player.controlBar.resolutionSelector.el().firstChild.children;
+				button_nodes = player.getChild( 'controlBar' ).getChild( 'resolutionSelector' ).el().firstChild.children;
 				button_node_count = button_nodes.length;
 				
 				// Update the button text
@@ -381,7 +385,9 @@
 		});
 		
 		// Add the button to the control bar object and the DOM
-		player.controlBar.resolutionSelector = player.controlBar.addChild( resolutionSelector );
+		this.on( 'ready' , function() {
+			player.getChild( 'controlBar' ).addChild( resolutionSelector );
+		} );
 	});
 
 })( videojs );
